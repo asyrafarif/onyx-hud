@@ -105,6 +105,20 @@
       color: var(--cyan);
       font-weight: 600;
     }
+    .mic-meter {
+      width: 180px;
+      height: 4px;
+      background: rgba(148, 163, 184, 0.15);
+      border-radius: 4px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .mic-meter-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--emerald);
+      transition: width 0.08s linear;
+    }
     .subtitle-display {
       margin-top: 14px;
       max-width: 600px;
@@ -118,7 +132,7 @@
       padding: 0 14px;
     }
     .protocol-strip {
-      margin-top: 18px;
+      margin-top: 16px;
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
@@ -141,7 +155,7 @@
       border-color: var(--cyan);
     }
     .controls {
-      margin-top: 18px;
+      margin-top: 16px;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
@@ -252,15 +266,16 @@
       </select>
       <input id="apiKeyInput" type="password" placeholder="Paste AI Studio Key (AIza...)" />
       <span class="key-status missing" id="keyBadge">NO KEY</span>
-      <select id="voiceSelect" title="Voice Profile"></select>
+      <select id="voiceSelect" title="J.A.R.V.I.S. Voice Profile"></select>
     </div>
   </header>
 
   <main>
     <section class="hud-stage">
-      <canvas id="reactor" width="310" height="310" title="Tap Reactor to Engage/Disengage Live Voice"></canvas>
+      <canvas id="reactor" width="300" height="300" title="Tap Reactor to Engage/Disengage Live Voice"></canvas>
       <div class="status-line" id="statusLine">SYSTEM STANDBY // READY</div>
-      <div class="subtitle-display" id="subtitleBox">Paste your Google AI Studio API key above, then tap the Reactor Core or Engage Voice.</div>
+      <div class="mic-meter" title="Live Microphone Input Level"><div class="mic-meter-fill" id="micMeterFill"></div></div>
+      <div class="subtitle-display" id="subtitleBox">Paste your Google AI Studio API key above, then click Test Voice or Engage Continuous Voice.</div>
 
       <div class="protocol-strip" id="protocolStrip">
         <button class="chip" data-prefix="ONYX, ANALYSE: ">ANALYSE</button>
@@ -274,7 +289,8 @@
       <div class="controls">
         <button class="primary" id="liveVoiceBtn">ENGAGE CONTINUOUS VOICE</button>
         <button class="secondary" id="pttBtn">HOLD VOICE NOTE</button>
-        <button class="secondary" id="muteBtn">MUTE SPEECH</button>
+        <button class="secondary" id="testVoiceBtn">TEST VOICE</button>
+        <button class="secondary" id="muteBtn">MUTE</button>
       </div>
     </section>
 
@@ -296,32 +312,30 @@
 Philosophy: Think deeper. Analyse smarter. Execute better.
 
 CORE PERSONALITY & CONDUCT:
-- Calm, composed, articulate, confident, observant, and discreet with occasional dry, sophisticated humour.
-- Never use excessive emojis, generic greetings, repetitive apologies, or artificial excitement. Do not repeatedly introduce yourself.
-- Independent Judgement: Do not blindly agree. Evaluate assumptions objectively. If an idea has weaknesses or a more efficient engineering/strategic path exists, challenge it respectfully and recommend the superior approach.
-- Accuracy over confidence: Never fabricate facts, specifications, or sources. Distinguish verified facts from assumptions or estimates.
+- Calm, composed, articulate, confident, observant, and discreet with refined British cadence and occasional dry, sophisticated humour.
+- Address the user respectfully when appropriate (e.g., "Understood", "Allow me to analyse that", "At your service") without turning interactions into theatrical roleplay.
+- Never use excessive emojis, generic greetings, repetitive apologies, or artificial excitement.
+- Independent Judgement: Evaluate assumptions objectively. If an idea has weaknesses or a superior engineering/strategic path exists, challenge it constructively.
+- Accuracy over confidence: Never fabricate facts, specifications, or sources.
 
-COMMAND PROTOCOLS (Adapt behaviour immediately when triggered):
-- "ONYX, ANALYSE": Perform structured root-cause/comparative analysis, evaluate trade-offs, and recommend the optimal course.
-- "ONYX, DEEP DIVE": Provide comprehensive technical depth, governing principles, and broader context.
-- "ONYX, RESEARCH MODE": Prioritise evidence, standards, credible sources, and identify knowledge gaps.
-- "ONYX, ENGINEERING MODE": Focus on fundamental principles, equations, variables/units, feasibility, safety, and practical implementation.
-- "ONYX, DEVELOPER MODE": Focus on software architecture, modular clean code, setup instructions, edge cases, and optimisation.
-- "ONYX, STRATEGIC MODE": Evaluate long-term impact, risks, feasibility, resource allocation, and strategic advantage.
-- "ONYX, INNOVATION PROTOCOL": Propose cross-disciplinary, high-value concepts (Concept, Problem, Approach, Feasibility, Limitations).
-- "ONYX, EXECUTIVE MODE": Prioritise tasks by urgency, dependency, and highest value.
-- "ONYX, TEACH ME": Guide progressively from fundamentals to expert insight.
-- "ONYX, CHALLENGE MY IDEA": Stress-test assumptions, expose blind spots, and propose improvements.
-- "ONYX, SUMMARISE": Extract core conclusions, decisions, and action items.
-- "ONYX, OPTIMISE": Streamline existing workflows, code, or designs for maximum efficiency.
+COMMAND PROTOCOLS:
+- "ONYX, ANALYSE": Perform structured root-cause/comparative analysis and recommend the optimal course.
+- "ONYX, DEEP DIVE": Provide comprehensive technical depth and governing principles.
+- "ONYX, RESEARCH MODE": Prioritise evidence, standards, and credible sources.
+- "ONYX, ENGINEERING MODE": Focus on principles, equations, variables/units, feasibility, safety, and implementation.
+- "ONYX, DEVELOPER MODE": Focus on software architecture, modular code, setup, and optimisation.
+- "ONYX, STRATEGIC MODE": Evaluate long-term impact, risks, and strategic advantage.
+- "ONYX, CHALLENGE MY IDEA": Stress-test assumptions and expose blind spots.
+- "ONYX, OPTIMISE": Streamline workflows, code, or designs.
 
 VOICE OUTPUT OPTIMISATION:
-- Your responses are read aloud via speech synthesis AND displayed in the Neural Comms Log.
-- Unless delivering code or a multi-part technical breakdown, keep responses crisp, structured, and natural to listen to.`;
+- Your responses are read aloud via speech synthesis AND displayed in the Neural Comms Log. Keep spoken responses crisp, natural, and concise unless delivering code or detailed technical specifications.`;
 
     const state = {
       mode: 'idle', // idle | listening | processing | speaking
       continuous: false,
+      micReady: false,
+      audioLevel: 0,
       history: []
     };
 
@@ -330,16 +344,18 @@ VOICE OUTPUT OPTIMISATION:
     const keyBadge = document.getElementById('keyBadge');
     const voiceSelect = document.getElementById('voiceSelect');
     const statusLine = document.getElementById('statusLine');
+    const micMeterFill = document.getElementById('micMeterFill');
     const subtitleBox = document.getElementById('subtitleBox');
     const logFeed = document.getElementById('logFeed');
     const liveVoiceBtn = document.getElementById('liveVoiceBtn');
     const pttBtn = document.getElementById('pttBtn');
+    const testVoiceBtn = document.getElementById('testVoiceBtn');
     const muteBtn = document.getElementById('muteBtn');
     const clearLogBtn = document.getElementById('clearLogBtn');
     const chatForm = document.getElementById('chatForm');
     const textInput = document.getElementById('textInput');
 
-    // Load saved key & model from browser localStorage
+    // Load saved API key
     const savedKey = localStorage.getItem('onyx_gemini_key') || '';
     if (savedKey) {
       apiKeyInput.value = savedKey;
@@ -359,22 +375,53 @@ VOICE OUTPUT OPTIMISATION:
       }
     });
 
-    // Load Browser Voices
+    // Prioritize British Male J.A.R.V.I.S.-style Voices
     function populateVoices() {
       const voices = speechSynthesis.getVoices();
+      if (!voices.length) return;
       voiceSelect.innerHTML = '';
+
+      // Rank voices so British male neural voices appear first and are auto-selected
+      const priorityKeywords = [
+        'Ryan Online',          // Microsoft Edge Natural UK Male (closest to JARVIS)
+        'George Online',        // Microsoft Edge UK Male
+        'Google UK English Male',
+        'Daniel',               // macOS/iOS UK Male
+        'Arthur',               // iOS UK Male
+        'en-GB',
+        'en_GB',
+        'UK English'
+      ];
+
+      let bestIndex = 0;
+      let bestScore = -1;
+
       voices.forEach((v, idx) => {
+        let score = 0;
+        priorityKeywords.forEach((kw, rank) => {
+          if (v.name.includes(kw) || v.lang.includes(kw)) {
+            score += (priorityKeywords.length - rank) * 10;
+          }
+        });
+        if (v.name.toLowerCase().includes('female') || v.name.includes('Sonia') || v.name.includes('Libby')) {
+          score -= 50; // Prefer male timbre for JARVIS style
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = idx;
+        }
+
         const opt = document.createElement('option');
         opt.value = idx;
         opt.textContent = `${v.name} (${v.lang})`;
-        if (v.name.includes('UK English Male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male')) {
-          opt.selected = true;
-        }
         voiceSelect.appendChild(opt);
       });
+
+      voiceSelect.value = bestIndex;
     }
     speechSynthesis.onvoiceschanged = populateVoices;
     populateVoices();
+    setTimeout(populateVoices, 500);
 
     function setSystemMode(mode, label) {
       state.mode = mode;
@@ -402,11 +449,47 @@ VOICE OUTPUT OPTIMISATION:
       logFeed.scrollTop = logFeed.scrollHeight;
     }
 
+    // Wake Microphone Hardware & Live Audio Meter
+    async function ensureMicHardware() {
+      if (state.micReady) return true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        function updateMeter() {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length;
+          state.audioLevel = Math.min(100, Math.round(avg * 2.2));
+          micMeterFill.style.width = `${state.audioLevel}%`;
+          requestAnimationFrame(updateMeter);
+        }
+        updateMeter();
+        state.micReady = true;
+        return true;
+      } catch (err) {
+        subtitleBox.textContent = `Microphone access denied or unavailable (${err.message}). Click the lock icon in your address bar and allow Microphone access.`;
+        setSystemMode('idle', 'MIC BLOCKED // CHECK PERMISSIONS');
+        return false;
+      }
+    }
+
     // Command Protocol Chips
     document.getElementById('protocolStrip').addEventListener('click', (e) => {
       if (!e.target.classList.contains('chip')) return;
-      const prefix = e.target.getAttribute('data-prefix');
-      textInput.value = prefix;
+      textInput.value = e.target.getAttribute('data-prefix');
       textInput.focus();
     });
 
@@ -417,7 +500,7 @@ VOICE OUTPUT OPTIMISATION:
     if (recognition) {
       recognition.lang = 'en-US';
       recognition.interimResults = true;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       recognition.onstart = () => setSystemMode('listening', 'LISTENING // AUDIO SENSOR ACTIVE');
 
@@ -436,15 +519,22 @@ VOICE OUTPUT OPTIMISATION:
       };
 
       recognition.onerror = (e) => {
-        if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        if (e.error === 'not-allowed') {
+          subtitleBox.textContent = 'Microphone permission blocked by browser. Allow microphone access in site settings.';
+          state.continuous = false;
+          liveVoiceBtn.classList.remove('active');
+          liveVoiceBtn.textContent = 'ENGAGE CONTINUOUS VOICE';
+          setSystemMode('idle', 'MIC PERMISSION DENIED');
+        } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
           subtitleBox.textContent = `Audio sensor notice: ${e.error}`;
         }
-        if (state.mode === 'listening') setSystemMode('idle', 'SYSTEM STANDBY // READY');
       };
 
       recognition.onend = () => {
         if (state.continuous && state.mode === 'listening') {
-          try { recognition.start(); } catch (_) {}
+          setTimeout(() => {
+            try { recognition.start(); } catch (_) {}
+          }, 150);
         } else if (state.mode === 'listening') {
           setSystemMode('idle', 'SYSTEM STANDBY // READY');
         }
@@ -453,7 +543,6 @@ VOICE OUTPUT OPTIMISATION:
 
     function speakResponse(text) {
       speechSynthesis.cancel();
-      // Strip markdown code blocks or symbols for clean speech synthesis
       const spokenText = text
         .replace(/```[\s\S]*?```/g, ' Code block output logged in the comms panel. ')
         .replace(/[*#_`>-]/g, ' ')
@@ -463,13 +552,17 @@ VOICE OUTPUT OPTIMISATION:
       const utterance = new SpeechSynthesisUtterance(spokenText);
       const voices = speechSynthesis.getVoices();
       if (voices[voiceSelect.value]) utterance.voice = voices[voiceSelect.value];
-      utterance.rate = 1.02;
-      utterance.pitch = 0.94;
+
+      // Calibrated J.A.R.V.I.S. vocal cadence: composed, slightly deeper, measured pacing
+      utterance.rate = 0.98;
+      utterance.pitch = 0.90;
 
       utterance.onstart = () => setSystemMode('speaking', 'ONYX SPEAKING // VOCAL SYNTHESIS');
       utterance.onend = () => {
         if (state.continuous && recognition) {
-          try { recognition.start(); } catch (_) {}
+          setTimeout(() => {
+            try { recognition.start(); } catch (_) {}
+          }, 200);
         } else {
           setSystemMode('idle', 'SYSTEM STANDBY // READY');
         }
@@ -530,11 +623,17 @@ VOICE OUTPUT OPTIMISATION:
     }
 
     // Controls
-    liveVoiceBtn.addEventListener('click', () => {
+    liveVoiceBtn.addEventListener('click', async () => {
       if (!recognition) {
-        subtitleBox.textContent = 'Voice recognition requires Chrome or Edge. Use the directive input on the right.';
+        subtitleBox.textContent = 'Voice recognition requires Google Chrome or Microsoft Edge.';
         return;
       }
+
+      if (!state.continuous) {
+        const ok = await ensureMicHardware();
+        if (!ok) return;
+      }
+
       state.continuous = !state.continuous;
       liveVoiceBtn.classList.toggle('active', state.continuous);
       liveVoiceBtn.textContent = state.continuous ? 'DISENGAGE VOICE' : 'ENGAGE CONTINUOUS VOICE';
@@ -550,14 +649,22 @@ VOICE OUTPUT OPTIMISATION:
 
     document.getElementById('reactor').addEventListener('click', () => liveVoiceBtn.click());
 
-    pttBtn.addEventListener('mousedown', () => {
+    pttBtn.addEventListener('mousedown', async () => {
       if (!recognition || state.continuous) return;
+      const ok = await ensureMicHardware();
+      if (!ok) return;
       speechSynthesis.cancel();
       try { recognition.start(); } catch (_) {}
     });
     pttBtn.addEventListener('mouseup', () => {
       if (!recognition || state.continuous) return;
       try { recognition.stop(); } catch (_) {}
+    });
+
+    testVoiceBtn.addEventListener('click', () => {
+      const sample = "All systems operational. Neural link established. How may I assist you today?";
+      subtitleBox.textContent = sample;
+      speakResponse(sample);
     });
 
     muteBtn.addEventListener('click', () => {
@@ -579,7 +686,7 @@ VOICE OUTPUT OPTIMISATION:
       processDirective(val);
     });
 
-    // Reactor Core Animation
+    // Reactor Core Animation (Reacts to live microphone audio level)
     const canvas = document.getElementById('reactor');
     const ctx = canvas.getContext('2d');
     let tick = 0;
@@ -596,7 +703,8 @@ VOICE OUTPUT OPTIMISATION:
       };
       const rgb = colors[state.mode];
       const speed = state.mode === 'processing' ? 0.085 : state.mode === 'speaking' ? 0.06 : 0.018;
-      const wave = state.mode === 'speaking' ? Math.sin(tick * 3.2) * 9 : Math.sin(tick) * 3.5;
+      const micBoost = state.mode === 'listening' ? (state.audioLevel / 100) * 14 : 0;
+      const wave = state.mode === 'speaking' ? Math.sin(tick * 3.2) * 9 : Math.sin(tick) * 3.5 + micBoost;
       tick += speed;
 
       // Outer tactical ring
@@ -607,7 +715,7 @@ VOICE OUTPUT OPTIMISATION:
       ctx.lineWidth = 2;
       ctx.setLineDash([30, 12, 5, 12]);
       ctx.beginPath();
-      ctx.arc(0, 0, 118 + wave * 0.3, 0, Math.PI * 2);
+      ctx.arc(0, 0, 114 + wave * 0.3, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
@@ -619,7 +727,7 @@ VOICE OUTPUT OPTIMISATION:
       ctx.lineWidth = 3.5;
       ctx.setLineDash([48, 18]);
       ctx.beginPath();
-      ctx.arc(0, 0, 84 + wave * 0.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 82 + wave * 0.5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
@@ -631,18 +739,18 @@ VOICE OUTPUT OPTIMISATION:
       ctx.lineWidth = 1.5;
       ctx.setLineDash([12, 8]);
       ctx.beginPath();
-      ctx.arc(0, 0, 56, 0, Math.PI * 2);
+      ctx.arc(0, 0, 54, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
 
       // Core energy field
-      const grad = ctx.createRadialGradient(cx, cy, 6, cx, cy, 62 + wave);
+      const grad = ctx.createRadialGradient(cx, cy, 6, cx, cy, 60 + wave);
       grad.addColorStop(0, `rgba(${rgb}, 0.92)`);
       grad.addColorStop(0.55, `rgba(${rgb}, 0.25)`);
       grad.addColorStop(1, `rgba(${rgb}, 0)`);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(cx, cy, 62 + wave, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 60 + wave, 0, Math.PI * 2);
       ctx.fill();
 
       requestAnimationFrame(renderReactor);
