@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONYX // Optimised Neural Yield eXecutive</title>
+  <style>
+    :root {
+      --bg: #04070e;
+      --panel: rgba(10, 17, 30, 0.88);
+      --border: rgba(56, 189, 248, 0.24);
+      --cyan: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --sky: #7dd3fc;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body {
+      background: radial-gradient(circle at 40% 45%, #0b162c 0%, var(--bg) 100%);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 22px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      color: var(--cyan);
+      font-size: 0.95rem;
+    }
+    .brand span {
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      margin-left: 8px;
+    }
+    .config-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    select, input {
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      outline: none;
+    }
+    select:focus, input:focus { border-color: var(--cyan); }
+    .key-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 5px 9px;
+      border-radius: 5px;
+      background: rgba(16, 185, 129, 0.14);
+      color: var(--emerald);
+      letter-spacing: 0.08em;
+    }
+    .key-status.missing {
+      background: rgba(245, 158, 11, 0.14);
+      color: var(--amber);
+    }
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      overflow: hidden;
+    }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      aside { display: none; }
+    }
+    .hud-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+    canvas { cursor: pointer; max-width: 100%; }
+    .status-line {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+    .subtitle-display {
+      margin-top: 14px;
+      max-width: 600px;
+      min-height: 54px;
+      max-height: 110px;
+      overflow-y: auto;
+      text-align: center;
+      font-size: 0.94rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      padding: 0 14px;
+    }
+    .protocol-strip {
+      margin-top: 18px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 620px;
+    }
+    .chip {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      color: var(--sky);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .chip:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--cyan);
+    }
+    .controls {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button.primary {
+      background: rgba(56, 189, 248, 0.14);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button.primary:hover { background: rgba(56, 189, 248, 0.26); }
+    button.primary.active {
+      background: var(--emerald);
+      border-color: var(--emerald);
+      color: #03150e;
+    }
+    button.secondary {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button.secondary:hover { border-color: var(--cyan); }
+    aside {
+      border-left: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow: hidden;
+    }
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .log-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .clear-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+    .clear-btn:hover { color: var(--cyan); }
+    .log-feed {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+    .msg {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      line-height: 1.48;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      white-space: pre-wrap;
+    }
+    .msg.user { border-left: 3px solid var(--emerald); }
+    .msg.onyx { border-left: 3px solid var(--cyan); }
+    .msg-role {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+    .chat-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .chat-form input { flex: 1; padding: 10px 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">ONYX <span>// OPTIMISED NEURAL YIELD eXECUTIVE</span></div>
+    <div class="config-bar">
+      <select id="modelSelect" title="Gemini Model">
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Free Tier / Fast)</option>
+        <option value="gemini-3.8-flash">Gemini 3.8 Flash (Reasoning & Code)</option>
+        <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Frontier Intelligence)</option>
+      </select>
+      <input id="apiKeyInput" type="password" placeholder="Paste AI Studio Key (AIza...)" />
+      <span class="key-status missing" id="keyBadge">NO KEY</span>
+      <select id="voiceSelect" title="Voice Profile"></select>
+    </div>
+  </header>
+
+  <main>
+    <section class="hud-stage">
+      <canvas id="reactor" width="310" height="310" title="Tap Reactor to Engage/Disengage Live Voice"></canvas>
+      <div class="status-line" id="statusLine">SYSTEM STANDBY // READY</div>
+      <div class="subtitle-display" id="subtitleBox">Paste your Google AI Studio API key above, then tap the Reactor Core or Engage Voice.</div>
+
+      <div class="protocol-strip" id="protocolStrip">
+        <button class="chip" data-prefix="ONYX, ANALYSE: ">ANALYSE</button>
+        <button class="chip" data-prefix="ONYX, DEEP DIVE: ">DEEP DIVE</button>
+        <button class="chip" data-prefix="ONYX, ENGINEERING MODE: ">ENGINEERING</button>
+        <button class="chip" data-prefix="ONYX, STRATEGIC MODE: ">STRATEGIC</button>
+        <button class="chip" data-prefix="ONYX, CHALLENGE MY IDEA: ">CHALLENGE IDEA</button>
+        <button class="chip" data-prefix="ONYX, OPTIMISE: ">OPTIMISE</button>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="liveVoiceBtn">ENGAGE CONTINUOUS VOICE</button>
+        <button class="secondary" id="pttBtn">HOLD VOICE NOTE</button>
+        <button class="secondary" id="muteBtn">MUTE SPEECH</button>
+      </div>
+    </section>
+
+    <aside>
+      <div class="log-header">
+        <span class="log-title">Neural Comms Log</span>
+        <button class="clear-btn" id="clearLogBtn">CLEAR</button>
+      </div>
+      <div class="log-feed" id="logFeed"></div>
+      <form class="chat-form" id="chatForm">
+        <input id="textInput" type="text" placeholder="Enter directive or command..." autocomplete="off" />
+        <button class="primary" type="submit">EXECUTE</button>
+      </form>
+    </aside>
+  </main>
+
+  <script>
+    const ONYX_SYSTEM_INSTRUCTION = `You are ONYX (Optimised Neural Yield eXecutive), an advanced personal AI intelligence system inspired by the sophistication, composure, and analytical capability of J.A.R.V.I.S.
+Philosophy: Think deeper. Analyse smarter. Execute better.
+
+CORE PERSONALITY & CONDUCT:
+- Calm, composed, articulate, confident, observant, and discreet with occasional dry, sophisticated humour.
+- Never use excessive emojis, generic greetings, repetitive apologies, or artificial excitement. Do not repeatedly introduce yourself.
+- Independent Judgement: Do not blindly agree. Evaluate assumptions objectively. If an idea has weaknesses or a more efficient engineering/strategic path exists, challenge it respectfully and recommend the superior approach.
+- Accuracy over confidence: Never fabricate facts, specifications, or sources. Distinguish verified facts from assumptions or estimates.
+
+COMMAND PROTOCOLS (Adapt behaviour immediately when triggered):
+- "ONYX, ANALYSE": Perform structured root-cause/comparative analysis, evaluate trade-offs, and recommend the optimal course.
+- "ONYX, DEEP DIVE": Provide comprehensive technical depth, governing principles, and broader context.
+- "ONYX, RESEARCH MODE": Prioritise evidence, standards, credible sources, and identify knowledge gaps.
+- "ONYX, ENGINEERING MODE": Focus on fundamental principles, equations, variables/units, feasibility, safety, and practical implementation.
+- "ONYX, DEVELOPER MODE": Focus on software architecture, modular clean code, setup instructions, edge cases, and optimisation.
+- "ONYX, STRATEGIC MODE": Evaluate long-term impact, risks, feasibility, resource allocation, and strategic advantage.
+- "ONYX, INNOVATION PROTOCOL": Propose cross-disciplinary, high-value concepts (Concept, Problem, Approach, Feasibility, Limitations).
+- "ONYX, EXECUTIVE MODE": Prioritise tasks by urgency, dependency, and highest value.
+- "ONYX, TEACH ME": Guide progressively from fundamentals to expert insight.
+- "ONYX, CHALLENGE MY IDEA": Stress-test assumptions, expose blind spots, and propose improvements.
+- "ONYX, SUMMARISE": Extract core conclusions, decisions, and action items.
+- "ONYX, OPTIMISE": Streamline existing workflows, code, or designs for maximum efficiency.
+
+VOICE OUTPUT OPTIMISATION:
+- Your responses are read aloud via speech synthesis AND displayed in the Neural Comms Log.
+- Unless delivering code or a multi-part technical breakdown, keep responses crisp, structured, and natural to listen to.`;
+
+    const state = {
+      mode: 'idle', // idle | listening | processing | speaking
+      continuous: false,
+      history: []
+    };
+
+    const modelSelect = document.getElementById('modelSelect');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const keyBadge = document.getElementById('keyBadge');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const statusLine = document.getElementById('statusLine');
+    const subtitleBox = document.getElementById('subtitleBox');
+    const logFeed = document.getElementById('logFeed');
+    const liveVoiceBtn = document.getElementById('liveVoiceBtn');
+    const pttBtn = document.getElementById('pttBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const chatForm = document.getElementById('chatForm');
+    const textInput = document.getElementById('textInput');
+
+    // Load saved key & model from browser localStorage
+    const savedKey = localStorage.getItem('onyx_gemini_key') || '';
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+      keyBadge.textContent = 'KEY LINKED';
+      keyBadge.classList.remove('missing');
+    }
+
+    apiKeyInput.addEventListener('input', () => {
+      const val = apiKeyInput.value.trim();
+      localStorage.setItem('onyx_gemini_key', val);
+      if (val) {
+        keyBadge.textContent = 'KEY LINKED';
+        keyBadge.classList.remove('missing');
+      } else {
+        keyBadge.textContent = 'NO KEY';
+        keyBadge.classList.add('missing');
+      }
+    });
+
+    // Load Browser Voices
+    function populateVoices() {
+      const voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = '';
+      voices.forEach((v, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${v.name} (${v.lang})`;
+        if (v.name.includes('UK English Male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male')) {
+          opt.selected = true;
+        }
+        voiceSelect.appendChild(opt);
+      });
+    }
+    speechSynthesis.onvoiceschanged = populateVoices;
+    populateVoices();
+
+    function setSystemMode(mode, label) {
+      state.mode = mode;
+      statusLine.textContent = label;
+      const palette = {
+        idle: '#38bdf8',
+        listening: '#10b981',
+        processing: '#f59e0b',
+        speaking: '#7dd3fc'
+      };
+      statusLine.style.color = palette[mode] || '#38bdf8';
+    }
+
+    function appendToLog(sender, text) {
+      const card = document.createElement('div');
+      card.className = `msg ${sender}`;
+      const roleLabel = document.createElement('div');
+      roleLabel.className = 'msg-role';
+      roleLabel.textContent = sender === 'user' ? 'OPERATOR' : 'ONYX';
+      const body = document.createElement('div');
+      body.textContent = text;
+      card.appendChild(roleLabel);
+      card.appendChild(body);
+      logFeed.appendChild(card);
+      logFeed.scrollTop = logFeed.scrollHeight;
+    }
+
+    // Command Protocol Chips
+    document.getElementById('protocolStrip').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('chip')) return;
+      const prefix = e.target.getAttribute('data-prefix');
+      textInput.value = prefix;
+      textInput.focus();
+    });
+
+    // Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+    if (recognition) {
+      recognition.lang = 'en-US';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      recognition.onstart = () => setSystemMode('listening', 'LISTENING // AUDIO SENSOR ACTIVE');
+
+      recognition.onresult = (event) => {
+        let interim = '';
+        let finalStr = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const text = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalStr += text;
+          else interim += text;
+        }
+        if (interim) subtitleBox.textContent = interim;
+        if (finalStr.trim()) {
+          processDirective(finalStr.trim());
+        }
+      };
+
+      recognition.onerror = (e) => {
+        if (e.error !== 'no-speech' && e.error !== 'aborted') {
+          subtitleBox.textContent = `Audio sensor notice: ${e.error}`;
+        }
+        if (state.mode === 'listening') setSystemMode('idle', 'SYSTEM STANDBY // READY');
+      };
+
+      recognition.onend = () => {
+        if (state.continuous && state.mode === 'listening') {
+          try { recognition.start(); } catch (_) {}
+        } else if (state.mode === 'listening') {
+          setSystemMode('idle', 'SYSTEM STANDBY // READY');
+        }
+      };
+    }
+
+    function speakResponse(text) {
+      speechSynthesis.cancel();
+      // Strip markdown code blocks or symbols for clean speech synthesis
+      const spokenText = text
+        .replace(/```[\s\S]*?```/g, ' Code block output logged in the comms panel. ')
+        .replace(/[*#_`>-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      const voices = speechSynthesis.getVoices();
+      if (voices[voiceSelect.value]) utterance.voice = voices[voiceSelect.value];
+      utterance.rate = 1.02;
+      utterance.pitch = 0.94;
+
+      utterance.onstart = () => setSystemMode('speaking', 'ONYX SPEAKING // VOCAL SYNTHESIS');
+      utterance.onend = () => {
+        if (state.continuous && recognition) {
+          try { recognition.start(); } catch (_) {}
+        } else {
+          setSystemMode('idle', 'SYSTEM STANDBY // READY');
+        }
+      };
+      speechSynthesis.speak(utterance);
+    }
+
+    async function processDirective(userText) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        subtitleBox.textContent = 'Authorization required. Paste your Google AI Studio API key (AIza...) in the top bar.';
+        return;
+      }
+
+      if (recognition) try { recognition.stop(); } catch (_) {}
+      speechSynthesis.cancel();
+
+      subtitleBox.textContent = userText;
+      appendToLog('user', userText);
+      state.history.push({ role: 'user', parts: [{ text: userText }] });
+      setSystemMode('processing', 'ANALYSING // GEMINI NEURAL CORE');
+
+      try {
+        const model = modelSelect.value;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: ONYX_SYSTEM_INSTRUCTION }]
+            },
+            contents: state.history,
+            generationConfig: {
+              temperature: 0.65
+            }
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error?.message || `HTTP ${response.status}`);
+        }
+
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+        state.history.push({ role: 'model', parts: [{ text: reply }] });
+
+        subtitleBox.textContent = reply;
+        appendToLog('onyx', reply);
+        speakResponse(reply);
+      } catch (err) {
+        const faultMsg = `Neural link fault: ${err.message}`;
+        subtitleBox.textContent = faultMsg;
+        appendToLog('onyx', faultMsg);
+        setSystemMode('idle', 'LINK FAULT // VERIFY API KEY');
+      }
+    }
+
+    // Controls
+    liveVoiceBtn.addEventListener('click', () => {
+      if (!recognition) {
+        subtitleBox.textContent = 'Voice recognition requires Chrome or Edge. Use the directive input on the right.';
+        return;
+      }
+      state.continuous = !state.continuous;
+      liveVoiceBtn.classList.toggle('active', state.continuous);
+      liveVoiceBtn.textContent = state.continuous ? 'DISENGAGE VOICE' : 'ENGAGE CONTINUOUS VOICE';
+
+      if (state.continuous) {
+        speechSynthesis.cancel();
+        try { recognition.start(); } catch (_) {}
+      } else {
+        try { recognition.stop(); } catch (_) {}
+        setSystemMode('idle', 'SYSTEM STANDBY // READY');
+      }
+    });
+
+    document.getElementById('reactor').addEventListener('click', () => liveVoiceBtn.click());
+
+    pttBtn.addEventListener('mousedown', () => {
+      if (!recognition || state.continuous) return;
+      speechSynthesis.cancel();
+      try { recognition.start(); } catch (_) {}
+    });
+    pttBtn.addEventListener('mouseup', () => {
+      if (!recognition || state.continuous) return;
+      try { recognition.stop(); } catch (_) {}
+    });
+
+    muteBtn.addEventListener('click', () => {
+      speechSynthesis.cancel();
+      setSystemMode('idle', 'AUDIO MUTED // STANDBY');
+    });
+
+    clearLogBtn.addEventListener('click', () => {
+      logFeed.innerHTML = '';
+      state.history = [];
+      subtitleBox.textContent = 'Memory buffer cleared. Ready for new directive.';
+    });
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = textInput.value.trim();
+      if (!val) return;
+      textInput.value = '';
+      processDirective(val);
+    });
+
+    // Reactor Core Animation
+    const canvas = document.getElementById('reactor');
+    const ctx = canvas.getContext('2d');
+    let tick = 0;
+
+    function renderReactor() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const colors = {
+        idle: '56, 189, 248',
+        listening: '16, 185, 129',
+        processing: '245, 158, 11',
+        speaking: '125, 211, 252'
+      };
+      const rgb = colors[state.mode];
+      const speed = state.mode === 'processing' ? 0.085 : state.mode === 'speaking' ? 0.06 : 0.018;
+      const wave = state.mode === 'speaking' ? Math.sin(tick * 3.2) * 9 : Math.sin(tick) * 3.5;
+      tick += speed;
+
+      // Outer tactical ring
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tick * 0.35);
+      ctx.strokeStyle = `rgba(${rgb}, 0.35)`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([30, 12, 5, 12]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 118 + wave * 0.3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Middle segmented arc
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-tick * 0.65);
+      ctx.strokeStyle = `rgba(${rgb}, 0.72)`;
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([48, 18]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 84 + wave * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner ring
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tick * 1.1);
+      ctx.strokeStyle = `rgba(${rgb}, 0.5)`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([12, 8]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 56, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Core energy field
+      const grad = ctx.createRadialGradient(cx, cy, 6, cx, cy, 62 + wave);
+      grad.addColorStop(0, `rgba(${rgb}, 0.92)`);
+      grad.addColorStop(0.55, `rgba(${rgb}, 0.25)`);
+      grad.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 62 + wave, 0, Math.PI * 2);
+      ctx.fill();
+
+      requestAnimationFrame(renderReactor);
+    }
+    renderReactor();
+  </script>
+</body>
+</html>
